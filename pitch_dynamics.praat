@@ -1,10 +1,4 @@
-# This script extract the total duration and F0 from equidistant intervals on a labeled tier.
-# The number of labeled tier and the amount of equidistant intervals can be specified using the form below.
-# The output will be saved to two different log files.
-# One has the duration information and the other one F0 information.
-# This script does not extract F0 values from labeled tier where the token is shorter than 50ms.
-
-# Copyright@ Miao Zhang, University at Buffalo, 2021.
+# Copyright@ Miao Zhang, University at Buffalo, 2022.
 # Feel free to use but please cite when you use it.
 
 
