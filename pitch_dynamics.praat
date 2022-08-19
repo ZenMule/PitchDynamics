@@ -1,11 +1,15 @@
-# Copyright @Christian DiCanio. 
-# Modified by Miao Zhang, 2022.
+# Modified by Miao Zhang based on Christian DiCanio's Pitch_Dynamics_6.2.praat
+# For details on the previous version before this one, please refer to Christian's original script.
 # Feel free to use but please cite when you use it.
 
-# Modifications include:
-# 1. Changed the log file format from wide table to long table.
-# 2. Outputs two separate log files: one with the f0 and intensity values from each equidistant interval, and the other one with the f0 maxima and minima.
-# 3. Changed to new Praat syntax.
+# Last updated by Miao Zhang, 8/19/2022.
+
+# Major modifications include:
+# 1. Changed the log file format from wide to.
+# 2. Outputs two separate log files: 
+# 		one with the f0 and intensity values from each equidistant interval, 
+#		and the other one with the f0 maxima and minima.
+# 3. Changed to the new Praat syntax to improve code-readability.
 
 
 #######################################################################
@@ -37,8 +41,33 @@ endform
 directory_name$ = chooseDirectory$: "Choose <SOUND> folder"
 
 # Create header rows for both log files
-fileappend 'directory_name$''log_file_t$'.txt File_name'tab$'Segment'tab$'t'tab$'t_m'tab$'F0'tab$'Int'newline$'
-fileappend 'directory_name$''log_file_dyn$'.txt File_name'tab$'Segment'tab$'Dur'tab$'Syll_dur'tab$'Word_dur'tab$'F0_min'tab$'F0_min_loc'tab$'F0_max'tab$'F0_max_loc'tab$'F0_mgnt'tab$'F0_changerate'newline$'
+# Time log
+output_file_t$ = directory_name$ + log_file_t$ + ".tsv"
+sep$ = tab$
+header_t$ = "File_name" + sep$
+  ...+ "Segment" + sep$
+  ...+ "t" + sep$
+  ...+ "t_m" + sep$
+  ...+ "F0" + sep$
+  ...+ "Int" + newline$
+appendFile: output_file_t$, header_t$
+
+# Dynamic log
+output_file_dyn$ = directory_name$ + log_file_dyn$ + ".tsv"
+sep$ = tab$
+header_dyn$ = "File_name" + sep$
+  ...+ "Segment" + sep$
+  ...+ "Dur" + sep$
+  ...+ "Syll_dur" + sep$
+  ...+ "Word_dur" + sep$
+  ...+ "Int" + sep$
+  ...+ "F0_min" + sep$
+  ...+ "F0_min_loc" + sep$
+  ...+ "F0_max" + sep$
+  ...+ "F0_max_loc" + sep$
+  ...+ "F0_mgnt" + sep$
+  ...+ "F0_cr" + newline$
+appendFile: output_file_dyn$, header_dyn$
 
 # Create a list of all files in the target directory
 Create Strings as file list: "fileList", directory_name$ + "/*.wav"
@@ -74,7 +103,8 @@ for i_file from 1 to num_file
 		if label$ <> ""
 			# When the label name is not empty, excecute the functions below
 			# paste the file name and the interval label
-			fileappend  'directory_name$''log_file_dyn$'.txt 'sound_name$''tab$'
+			#fileappend  'directory_name$''log_file_dyn$'.txt 'sound_name$''sep$'
+			appendFile: output_file_dyn$, sound_name$ + sep$
 
 			# Get the starting and end time point of the label,
 			# and calculate the total duration
@@ -83,7 +113,8 @@ for i_file from 1 to num_file
 			dur = label_end - label_start
 
 			# Paste the result
-			fileappend 'directory_name$''log_file_dyn$'.txt 'label$''tab$''dur:3''tab$'
+			#fileappend 'directory_name$''log_file_dyn$'.txt 'label$''sep$''dur:3''sep$'
+			appendFile: output_file_dyn$, label$ + sep$ + "'dur:3'" + sep$
 
 			# Find the middle point of the labeled interval
 			anchor = label_start + dur/2
@@ -91,7 +122,8 @@ for i_file from 1 to num_file
 			# Find the interval on the labeled sylable tier
 			if syllable_tier_number == 0
 				# If there is no syllable tier, paste the syllable duration as NA
-				fileappend 'directory_name$''log_file_dyn$'.txt NA'tab$'
+				#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'
+				appendFile: output_file_dyn$, "NA" + sep$
 			else
 				i_syll_label = Get interval at time: syllable_tier_number, anchor
 
@@ -100,12 +132,14 @@ for i_file from 1 to num_file
 				syll_end = Get end time of interval: syllable_tier_number, i_syll_label
 				syll_dur = syll_end - syll_start
 				# Paste the result
-				fileappend 'directory_name$''log_file_dyn$'.txt 'syll_dur:3''tab$'
+				#fileappend 'directory_name$''log_file_dyn$'.txt 'syll_dur:3''sep$'
+				appendFile: output_file_dyn$, "'syll_dur:3'" + sep$
 			endif
 
 			if word_tier_number == 0
 				# If there is no word tier, paste the word duration as NA
-				fileappend 'directory_name$''log_file_dyn$'.txt NA'tab$'
+				#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'
+				appendFile: output_file_dyn$, "NA" + sep$
 			else
 				# Find the interval on the labeled word tier
 				i_word_label = Get interval at time: word_tier_number, anchor
@@ -114,7 +148,8 @@ for i_file from 1 to num_file
 				word_end = Get end time of interval: word_tier_number, i_word_label
 				word_dur = word_end - word_start
 				# Paste the result
-				fileappend 'directory_name$''log_file_dyn$'.txt 'word_dur:3''tab$'
+				#fileappend 'directory_name$''log_file_dyn$'.txt 'word_dur:3''sep$'
+				appendFile: output_file_dyn$, "'word_dur:3'" + sep$
 			endif
 
 			# Work on individual labeled intervals. Extract pitch and intensity object
@@ -131,9 +166,23 @@ for i_file from 1 to num_file
 
 			if dur < 0.05
 				# If the label is shorter than 50ms, paste NA in 't', 't_m', 'F0', and 'Int' columns in time log file
-				fileappend 'directory_name$''log_file_t$'.txt 'sound_name$''tab$''label$''tab$'NA'tab$'NA'tab$'NA'tab$'NA'newline$'
+				#fileappend 'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$'NA'sep$'NA'sep$'NA'sep$'NA'newline$'
+				output_line_t_50$ = sound_name$ + sep$
+					...+ label$ + sep$
+					...+ "NA" + sep$
+					...+ "NA" + sep$
+					...+ "NA" + sep$
+					...+ "NA" + newline$
+				appendFile: output_file_t$, output_line_t_50$
 				# And paste NA in dynamic log file for columns
-				fileappend 'directory_name$''log_file_dyn$'.txt NA'tab$'NA'tab$'NA'tab$'NA'tab$'NA'tab$'NA'newline$'
+				#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'NA'sep$'NA'sep$'NA'sep$'NA'sep$'NA'newline$'
+				output_line_dyn_50$ = "NA" + sep$
+					...+ "NA" + sep$
+					...+ "NA" + sep$
+					...+ "NA" + sep$
+					...+ "NA" + sep$
+					...+ "NA" + newline$
+				appendFile: output_file_dyn$, output_line_dyn_50$
 			else
 				# Extract the pitch object first
 				selectObject: intv_ID
@@ -156,10 +205,12 @@ for i_file from 1 to num_file
 
 				if f0_min = undefined
 					# If f0 minima wasn't found, paste NA to F0_min and F0_minloc
-					fileappend 'directory_name$''log_file_dyn$'.txt NA'tab$'NA'tab$'
+					#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'NA'sep$'
+					appendFile: output_file_dyn$, "NA" + sep$ + "NA" + sep$
 				else
 					# If yes, paste the value
-					fileappend 'directory_name$''log_file_dyn$'.txt 'f0_min:2''tab$''f0_min_loc:2''tab$'
+					#fileappend 'directory_name$''log_file_dyn$'.txt 'f0_min:2''sep$''f0_min_loc:2''sep$'
+					appendFile: output_file_dyn$, "'f0_min:2'" + sep$ + "'f0_min_loc:2'" + sep$
 				endif
 
 				# F0 maximum
@@ -169,10 +220,12 @@ for i_file from 1 to num_file
 
 				if f0_max = undefined
 					# If f0 maxima wasn't found, paste NA to F0_min and F0_minloc
-					fileappend 'directory_name$''log_file_dyn$'.txt NA'tab$'NA'tab$'
+					#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'NA'sep$'
+					appendFile: output_file_dyn$, "NA" + sep$ + "NA" + sep$
 				else
 					## If yes, paste the value
-					fileappend 'directory_name$''log_file_dyn$'.txt 'f0_max:2''tab$''f0_max_loc:2''tab$'
+					#fileappend 'directory_name$''log_file_dyn$'.txt 'f0_max:2''sep$''f0_max_loc:2''sep$'
+					appendFile: output_file_dyn$, "'f0_max:2'" + sep$ + "'f0_max_loc:2'" + sep$
 				endif
 
 				# F0 dynamics
@@ -187,9 +240,11 @@ for i_file from 1 to num_file
 						f0_transtime = f0_min_time - f0_max_time
 						f0_changerate = f0_mgnt/f0_transtime
 					endif
-					fileappend 'directory_name$''log_file_dyn$'.txt 'f0_mgnt:2''tab$''f0_changerate:2''newline$'
+					#fileappend 'directory_name$''log_file_dyn$'.txt 'f0_mgnt:2''sep$''f0_changerate:2''newline$'
+					appendFile: output_file_dyn$, "'f0_mgnt:2'" + sep$ + "'f0_changerate:2'" + newline$
 				else
-					fileappend 'directory_name$''log_file_dyn$'.txt NA'tab$'NA'newline$'
+					#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'NA'newline$'
+					appendFile: output_file_dyn$, "NA" + sep$ + "NA" + newline$
 				endif
 
 				# Pitch and intensity by-time interval analysis
@@ -211,15 +266,39 @@ for i_file from 1 to num_file
 
 					if f0_intv = undefined
 						if intense_intv = undefined
-							fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''tab$''label$''tab$'NA'tab$'NA'tab$'NA'tab$'NA'newline$'
+							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$'NA'sep$'NA'sep$'NA'sep$'NA'newline$'
+							appendFile: output_file_t$, sound_name$ + sep$
+								...+ label$ + sep$
+								...+ "'i_intv'" + sep$
+								...+ "'intv_mid:3'" + sep$
+								...+ "NA" + sep$
+								...+ "NA" + newline$
 						else
-							fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''tab$''label$''tab$''i_intv''tab$''intv_mid:3''tab$'NA'tab$''intense_intv:2''newline$'
+							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$''i_intv''sep$''intv_mid:3''sep$'NA'sep$''intense_intv:2''newline$'
+							appendFile: output_file_t$, sound_name$ + sep$
+								...+ label$ + sep$
+								...+ "'i_intv'" + sep$
+								...+ "'intv_mid:3'" + sep$
+								...+ "NA" + sep$
+								...+ "'intense_intv:2'" + newline$
 						endif
 					else
 						if intense_intv = undefined
-							fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''tab$''label$''tab$''i_intv''tab$''intv_mid:3''tab$''f0_intv:2''tab$'NA'newline$'
+							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$''i_intv''sep$''intv_mid:3''sep$''f0_intv:2''sep$'NA'newline$'
+							appendFile: output_file_t$, sound_name$ + sep$
+								...+ label$ + sep$
+								...+ "'i_intv'" + sep$
+								...+ "'intv_mid:3'" + sep$
+								...+ "'f0_intv:2'" + sep$
+								...+ "'NA'" + newline$
 						else
-							fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''tab$''label$''tab$''i_intv''tab$''intv_mid:3''tab$''f0_intv:2''tab$''intense_intv:2''newline$'
+							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$''i_intv''sep$''intv_mid:3''sep$''f0_intv:2''sep$''intense_intv:2''newline$'
+							appendFile: output_file_t$, sound_name$ + sep$
+								...+ label$ + sep$
+								...+ "'i_intv'" + sep$
+								...+ "'intv_mid:3'" + sep$
+								...+ "'f0_intv:2'" + sep$
+								...+ "'intense_intv:2'" + newline$
 						endif
 					endif
 				endfor
