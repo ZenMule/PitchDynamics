@@ -1,5 +1,5 @@
 # PitchDynamics
-The Praat script of extracting pitch from labeled tiers.
+This Praat script extracts pitch from labeled tiers. It is modified based on Christian DiCanio's pitch_dynamics script.
 
 ## What does the script do?
 The script extract f0 (Hz) and intensity (dB) from labeled intervals in all sound files in a directory.
