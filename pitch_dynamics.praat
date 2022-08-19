@@ -2,6 +2,11 @@
 # Modified by Miao Zhang, 2022.
 # Feel free to use but please cite when you use it.
 
+# Modifications include:
+# 1. Changed the log file format from wide table to long table.
+# 2. Outputs two separate log files: one with the f0 and intensity values from each equidistant interval, and the other one with the f0 maxima and minima.
+# 3. Changed to new Praat syntax.
+
 
 #######################################################################
 #######################################################################
