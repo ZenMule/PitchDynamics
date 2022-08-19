@@ -1,4 +1,5 @@
-# Copyright@ Miao Zhang, University at Buffalo, 2022.
+# Copyright @Christian DiCanio. 
+# Modified by Miao Zhang, 2022.
 # Feel free to use but please cite when you use it.
 
 
