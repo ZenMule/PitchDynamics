@@ -2,7 +2,7 @@
 # For details on the previous version before this one, please refer to Christian's original script.
 # Feel free to use but please cite when you use it.
 
-# Last updated by Miao Zhang, 8/19/2022.
+# Last updated by Miao Zhang, 10/8/2022.
 
 # Major modifications include:
 # 1. Changed the log file format from wide to.
@@ -19,7 +19,7 @@
 form Extract Pitch data from labelled intervals
    sentence Log_file_t _f0t
    sentence Log_file_dyn _f0d
-   positive Numintervals 5
+   positive Number_of_chunks 5
    positive Labeled_tier_number 2
    integer Syllable_tier_number 1
    integer Word_tier_number 0
@@ -38,23 +38,29 @@ endform
 #######################################################################
 
 # Choose a directory
+pauseScript: "Choose the directory that contains subfolders of your sound and textgrid files."
 directory_name$ = chooseDirectory$: "Choose <SOUND> folder"
+folderName$# = folderName$# (directory_name$)
+if size (folderName$#) = 0
+	exitScript: "There are no subfolders in the directory you chose."
+endif
 
 # Create header rows for both log files
 # Time log
-output_file_t$ = directory_name$ + log_file_t$ + ".tsv"
-sep$ = tab$
-header_t$ = "File_name" + sep$
-  ...+ "Segment" + sep$
-  ...+ "t" + sep$
-  ...+ "t_m" + sep$
-  ...+ "F0" + sep$
-  ...+ "Int" + newline$
-appendFile: output_file_t$, header_t$
+sep$ = ","
+output_file_t$ = directory_name$ + log_file_t$ + ".csv"
+header_t$ = "Folder_name" + sep$
+	...+ "File_name" + sep$
+	...+ "Seg_num"
+  	...+ "Seg" + sep$
+  	...+ "t" + sep$
+  	...+ "t_m" + sep$
+  	...+ "F0" + sep$
+  	...+ "Int" 
+appendFileLine: output_file_t$, header_t$
 
 # Dynamic log
-output_file_dyn$ = directory_name$ + log_file_dyn$ + ".tsv"
-sep$ = tab$
+output_file_dyn$ = directory_name$ + log_file_dyn$ + ".csv"
 header_dyn$ = "File_name" + sep$
   ...+ "Segment" + sep$
   ...+ "Dur" + sep$
@@ -67,27 +73,22 @@ header_dyn$ = "File_name" + sep$
   ...+ "F0_max_loc" + sep$
   ...+ "F0_mgnt" + sep$
   ...+ "F0_cr" + newline$
-appendFile: output_file_dyn$, header_dyn$
+appendFileLine: output_file_dyn$, header_dyn$
 
 # Create a list of all files in the target directory
-Create Strings as file list: "fileList", directory_name$ + "/*.wav"
-selectObject: "Strings fileList"
-num_file = Get number of strings
+wavName$# = fileName$# (directory_name$ + "/*.wav")
+num_file = size (wavName$#)
 
 # Open the soundfile in Praat
 for i_file from 1 to num_file
-	selectObject: "Strings fileList"
-	file_name$ = Get string: i_file
+	wav_name$ = wavName$# [i_file]
 
 	# Read sound file
-	Read from file: directory_name$ + "/" + file_name$
-
-	sound_file = selected("Sound")
+	sound_file = Read from file: directory_name$ + "/" + wav_name$
 	sound_name$ = selected$("Sound")
 
 	# Read the corresponding TextGrid file into Praat
-	Read from file: directory_name$ + "/" + sound_name$ + ".TextGrid"
-	textGridID = selected("TextGrid")
+	textgrid_file = Read from file: directory_name$ + "/" + sound_name$ + ".TextGrid"
 
 	# Work through all labeled intervals on the target tier
 	num_label = Get number of intervals: labeled_tier_number
@@ -95,7 +96,7 @@ for i_file from 1 to num_file
 	# Get durations
 	for i_label from 1 to num_label
 		# Select the textgrid file
-		selectObject: textGridID
+		selectObject: textgrid_file
 
 		# Get the name of the label
 		label$ = Get label of interval: labeled_tier_number, i_label
@@ -111,13 +112,12 @@ for i_file from 1 to num_file
 			label_start = Get start time of interval: labeled_tier_number, i_label
 			label_end = Get end time of interval: labeled_tier_number, i_label
 			dur = label_end - label_start
+			# Find the middle point of the labeled interval
+			label_mid = label_start + dur/2
 
 			# Paste the result
 			#fileappend 'directory_name$''log_file_dyn$'.txt 'label$''sep$''dur:3''sep$'
 			appendFile: output_file_dyn$, label$ + sep$ + "'dur:3'" + sep$
-
-			# Find the middle point of the labeled interval
-			anchor = label_start + dur/2
 
 			# Find the interval on the labeled sylable tier
 			if syllable_tier_number == 0
@@ -125,7 +125,7 @@ for i_file from 1 to num_file
 				#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'
 				appendFile: output_file_dyn$, "NA" + sep$
 			else
-				i_syll_label = Get interval at time: syllable_tier_number, anchor
+				i_syll_label = Get interval at time: syllable_tier_number, label_mid
 
 				# Get the duration of the syllable interval
 				syll_start = Get start time of interval: syllable_tier_number, i_syll_label
@@ -142,7 +142,7 @@ for i_file from 1 to num_file
 				appendFile: output_file_dyn$, "NA" + sep$
 			else
 				# Find the interval on the labeled word tier
-				i_word_label = Get interval at time: word_tier_number, anchor
+				i_word_label = Get interval at time: word_tier_number, label_mid
 				# Get the duration of the word interval
 				word_start = Get start time of interval: word_tier_number, i_word_label
 				word_end = Get end time of interval: word_tier_number, i_word_label
@@ -164,26 +164,8 @@ for i_file from 1 to num_file
 			Extract part: pstart, pend, "rectangular", 1, "yes"
 			intv_ID = selected("Sound")
 
-			if dur < 0.05
-				# If the label is shorter than 50ms, paste NA in 't', 't_m', 'F0', and 'Int' columns in time log file
-				#fileappend 'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$'NA'sep$'NA'sep$'NA'sep$'NA'newline$'
-				output_line_t_50$ = sound_name$ + sep$
-					...+ label$ + sep$
-					...+ "NA" + sep$
-					...+ "NA" + sep$
-					...+ "NA" + sep$
-					...+ "NA" + newline$
-				appendFile: output_file_t$, output_line_t_50$
-				# And paste NA in dynamic log file for columns
-				#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'NA'sep$'NA'sep$'NA'sep$'NA'sep$'NA'newline$'
-				output_line_dyn_50$ = "NA" + sep$
-					...+ "NA" + sep$
-					...+ "NA" + sep$
-					...+ "NA" + sep$
-					...+ "NA" + sep$
-					...+ "NA" + newline$
-				appendFile: output_file_dyn$, output_line_dyn_50$
-			else
+			if dur >= 0.05
+				# Only extract f0 from segments that are longer than 50ms
 				# Extract the pitch object first
 				selectObject: intv_ID
 				To Pitch (ac): 0, f0_minimum, 15, "yes", 0.03, voicing_threshold, octave_jump, 0.35, 0.14, f0_maximum
@@ -241,79 +223,51 @@ for i_file from 1 to num_file
 						f0_changerate = f0_mgnt/f0_transtime
 					endif
 					#fileappend 'directory_name$''log_file_dyn$'.txt 'f0_mgnt:2''sep$''f0_changerate:2''newline$'
-					appendFile: output_file_dyn$, "'f0_mgnt:2'" + sep$ + "'f0_changerate:2'" + newline$
+					appendFileLine: output_file_dyn$, "'f0_mgnt:2'" + sep$ + "'f0_changerate:2'" 
 				else
 					#fileappend 'directory_name$''log_file_dyn$'.txt NA'sep$'NA'newline$'
-					appendFile: output_file_dyn$, "NA" + sep$ + "NA" + newline$
+					appendFileLine: output_file_dyn$, "NA" + sep$ + "NA" 
 				endif
 
 				# Pitch and intensity by-time interval analysis
         
-        		size = dur/numintervals
-				for i_intv from 1 to numintervals
+        		chunk_length = dur/number_of_chunks
+				for i_intv from 1 to number_of_chunks
 					# Get the start, end, and middle point of the interval
-					intv_start = label_start + (i_intv-1) * size
-					intv_end = label_start + i_intv * size
+					intv_start = label_start + (i_intv-1) * chunk_length
+					intv_end = label_start + i_intv * chunk_length
 					intv_mid = intv_start + (intv_end - intv_start)/2 - label_start
 
 					# Get the mean F0 of the time interval
 					selectObject: pitch_ID
 					f0_intv = Get mean: intv_start, intv_end, "Hertz"
+					if f0_intv = undefined
+						f0_intv = 0
+					endif
 
 					# Get the mean intensity of the time interval
 					selectObject: intensity_ID
 					intense_intv = Get mean: intv_start, intv_end, "dB"
-
-					if f0_intv = undefined
-						if intense_intv = undefined
-							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$'NA'sep$'NA'sep$'NA'sep$'NA'newline$'
-							appendFile: output_file_t$, sound_name$ + sep$
-								...+ label$ + sep$
-								...+ "'i_intv'" + sep$
-								...+ "'intv_mid:3'" + sep$
-								...+ "NA" + sep$
-								...+ "NA" + newline$
-						else
-							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$''i_intv''sep$''intv_mid:3''sep$'NA'sep$''intense_intv:2''newline$'
-							appendFile: output_file_t$, sound_name$ + sep$
-								...+ label$ + sep$
-								...+ "'i_intv'" + sep$
-								...+ "'intv_mid:3'" + sep$
-								...+ "NA" + sep$
-								...+ "'intense_intv:2'" + newline$
-						endif
-					else
-						if intense_intv = undefined
-							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$''i_intv''sep$''intv_mid:3''sep$''f0_intv:2''sep$'NA'newline$'
-							appendFile: output_file_t$, sound_name$ + sep$
-								...+ label$ + sep$
-								...+ "'i_intv'" + sep$
-								...+ "'intv_mid:3'" + sep$
-								...+ "'f0_intv:2'" + sep$
-								...+ "'NA'" + newline$
-						else
-							#fileappend  'directory_name$''log_file_t$'.txt 'sound_name$''sep$''label$''sep$''i_intv''sep$''intv_mid:3''sep$''f0_intv:2''sep$''intense_intv:2''newline$'
-							appendFile: output_file_t$, sound_name$ + sep$
-								...+ label$ + sep$
-								...+ "'i_intv'" + sep$
-								...+ "'intv_mid:3'" + sep$
-								...+ "'f0_intv:2'" + sep$
-								...+ "'intense_intv:2'" + newline$
-						endif
+					if intense_intv = undefined
+						intense_intv = 0
 					endif
+
+					appendFile: output_file_t$, sound_name$ + sep$
+								...+ label$ + sep$
+								...+ "'i_intv'" + sep$
+								...+ "'intv_mid:3'" + sep$
+								...+ "'f0_intv:2'" + sep$
+								...+ "'intense_intv:2'" + newline$
 				endfor
 
-				selectObject: pitch_ID, intensity_ID, intv_ID_filt, intv_ID
-				Remove
+				removeObject: pitch_ID, intensity_ID, intv_ID_filt, intv_ID
 
 			endif
 		endif
 	endfor
 
-	selectObject: sound_file, textGridID
-	Remove
+	removeObject: sound_file, textgrid_file
 
 endfor
 
-select all
-Remove
+removeObject: "Strings fileList"
