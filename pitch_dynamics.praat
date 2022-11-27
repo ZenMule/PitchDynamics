@@ -1,11 +1,11 @@
 # Modified by Miao Zhang based on Christian DiCanio's Pitch_Dynamics_6.2.praat
-# For details on the previous version before this one, please refer to Christian's original script.
+# For details of the previous versions, please refer to Christian's original script.
 # Feel free to use but please cite when you use it.
 
 # Last updated by Miao Zhang, 10/8/2022.
 
 # Major modifications include:
-# 1. Changed the log file format from wide to.
+# 1. Changed the log file format from wide format to long format.
 # 2. Outputs two separate log files: 
 # 		one with the f0 and intensity values from each equidistant interval, 
 #		and the other one with the f0 maxima and minima.
@@ -17,23 +17,26 @@
 
 
 form Extract Pitch data from labelled intervals
-   sentence Log_file_t _f0t
-   sentence Log_file_dyn _f0d
-   comment How many F0 values do you want to extract from each segment
-   positive Number_of_chunks 5
-   comment Which tier are the target segments on?:
-   positive Labeled_tier_number 3
-   comment Set the next two tier numbers to 0 if you don't have syllable/word tier:
-   integer Syllable_tier_number 0
-   integer Word_tier_number 0
-   comment Pitch analysis settings:
-   positive Analysis_points_time_step 0.005
-   positive Record_with_precision 1
-   positive F0_minimum 70
-   positive F0_maximum 600
-   positive Octave_jump 0.10
-   positive Voicing_threshold 0.65
-   positive Pitch_window_threshold 0.05
+	comment Suffix of the output file:
+	sentence Log_file_t _f0t
+	sentence Log_file_dyn _f0d
+	comment Labels you want the script to skip (separate by white space):
+	sentence Skip_list c
+	comment How many F0 values do you want to extract from each segment
+	positive Number_of_chunks 5
+	comment Which tier are the target segments on?:
+	positive Labeled_tier_number 3
+	comment Set the next two tier numbers to 0 if you don't have syllable/word tier:
+	integer Syllable_tier_number 0
+	integer Word_tier_number 0
+	comment Pitch analysis settings:
+	positive Analysis_points_time_step 0.005
+	positive Record_with_precision 1
+	positive F0_minimum 70
+	positive F0_maximum 600
+	positive Octave_jump 0.10
+	positive Voicing_threshold 0.65
+	positive Pitch_window_threshold 0.05
 endform
 
 
@@ -73,6 +76,9 @@ header_dyn$ = "File_name" + sep$
   ...+ "F0_max_loc" 
 writeFileLine: output_file_dyn$, header_dyn$
 
+# Skip labels
+skip_labels$# = splitByWhitespace$# (skip_list$)
+
 # Create a list of all files in the target directory
 wavNames$# = fileNames$# (directory_name$ + "/*.wav")
 num_file = size (wavNames$#)
@@ -100,7 +106,7 @@ for i_file from 1 to num_file
 		label$ = Get label of interval: labeled_tier_number, i_label
 		label$ = replace_regex$ (label$, "[\s]+", "", 0)
 
-		if label$ <> ""
+		if label$ <> "" and index (skip_labels$#, label$) = 0
 			# When the label name is not empty, excecute the functions below
 			# paste the file name and the interval label
 			appendFile: output_file_dyn$, sound_name$ + sep$
