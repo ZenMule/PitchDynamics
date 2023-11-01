@@ -23,17 +23,17 @@ form Extract Pitch data from labelled intervals
 	comment Labels you want the script to skip (separate by white space):
 	sentence Skip_list c
 	comment How many F0 values do you want to extract from each segment
-	positive Number_of_chunks 5
+	positive Number_of_chunks 10
 	comment Which tier are the target segments on?:
-	positive Labeled_tier_number 3
+	positive Labeled_tier_number 2
 	comment Set the next two tier numbers to 0 if you don't have syllable/word tier:
-	integer Syllable_tier_number 0
+	integer Syllable_tier_number 1
 	integer Word_tier_number 0
 	comment Pitch analysis settings:
 	positive Analysis_points_time_step 0.005
 	positive Record_with_precision 1
-	positive F0_minimum 70
-	positive F0_maximum 600
+	positive F0_minimum 50
+	positive F0_maximum 700
 	positive Octave_jump 0.10
 	positive Voicing_threshold 0.65
 	positive Pitch_window_threshold 0.05
