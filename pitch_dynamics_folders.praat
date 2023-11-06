@@ -13,6 +13,13 @@
 
 # Unlike the other script, this script will loop through multiple subfolders to extract F0 values.
 
+# Folder version:
+# The script now can loop through subfolders in the directory you choose.
+# The script sets F0 analysis ranges for different genders. 
+
+# !!!IMPORTANT!!!
+# Please name your folders starting with either "f/F" or "m/M" for the script to identify the gender of the speakers.
+
 
 #######################################################################
 #######################################################################
@@ -34,8 +41,10 @@ form Extract Pitch data from labelled intervals
 	comment Pitch analysis settings:
 	positive Analysis_points_time_step 0.005
 	positive Record_with_precision 1
-	positive F0_minimum 90
-	positive F0_maximum 700
+	positive F0_minimum_for_female 90
+	positive F0_maximum_for_female 700
+	positive F0_minimum_for_male 80
+	positive F0_maximum_for_male 400
 	positive Octave_jump 0.10
 	positive Voicing_threshold 0.65
 	positive Pitch_window_threshold 0.05
@@ -48,6 +57,9 @@ endform
 # Choose a directory
 pauseScript: "Choose the folder that contains subfolders of your sound and textgrid files."
 directory_name$ = chooseDirectory$: "Choose <SOUND> folder"
+
+# measure run time
+stopwatch
 
 # Create header rows for both log files
 # Time log
@@ -88,6 +100,15 @@ skip_labels$# = splitByWhitespace$# (skip_list$)
 folderNames$# = folderNames$# (directory_name$)
 for i_folder from 1 to size(folderNames$#)
 	folder_name$ = folderNames$# [i_folder]
+	# Seg F0 minimum and maximum for different genders
+	if index_regex (folder_name$, "^f") == 1 or index_regex (folder_name$, "^F") == 1
+		f0_minimum = f0_minimum_for_female
+		f0_maximum = f0_maximum_for_female
+	elsif index_regex (folder_name$, "^m") == 1 or index_regex (folder_name$, "^M") == 1
+		f0_minimum = f0_minimum_for_male
+		f0_maximum = f0_maximum_for_male
+	endif
+
 	# Create a list of all files in the target directory
 	wavNames$# = fileNames$# (directory_name$ + "/" + folder_name$ + "/*.wav")
 	num_file = size (wavNames$#)
@@ -95,7 +116,8 @@ for i_folder from 1 to size(folderNames$#)
 	# Open the soundfile in Praat
 	for i_file from 1 to num_file
 		wav_name$ = wavNames$# [i_file]
-
+		writeInfoLine: "Processing folder: < 'folder_name$' >"
+		appendInfoLine: "	current file: < 'wav_name$' >"
 		# Read sound file
 		sound_file = Read from file: directory_name$ + "/" + folder_name$ + "/" + wav_name$
 		sound_name$ = wav_name$ - ".wav"
@@ -253,3 +275,45 @@ for i_folder from 1 to size(folderNames$#)
 	endfor
 endfor
 
+runtime = stopwatch
+runtime = round(runtime)
+if runtime < 60
+	if runtime < 10
+		appendInfoLine: "Total run time was 00:00:0'runtime'"
+	else 
+		appendInfoLine: "Total run time was 00:00:'runtime'"
+	endif
+elsif runtime < 3600
+	minute = runtime div 60
+	second = runtime mod 60
+	if minute < 10
+		appendInfo: "The total run time was 00:0'minute':"
+	else 
+		appendInfo: "The total run time was 00:'minute':"
+	endif
+	if second < 10
+		appendInfoLine: "0'second'"
+	else 
+		appendInfoLine: "'second'"
+	endif
+else
+	hour = runtime div 3600
+	rest = runtime mod 3600
+	minute = rest div 60
+	second = rest mod 60
+	if hour < 10
+		appendInfo: "The total run time was 0'hour':"
+	else
+		appendInfo: "The total run time was 'hour':"
+	endif
+	if minute < 10
+		appendInfo: "0'minute':"
+	else 
+		appendInfo: "'minute':"
+	endif
+	if second < 10
+		appendInfoLine: "0'second'"
+	else 
+		appendInfoLine: "'second'"
+	endif
+endif
