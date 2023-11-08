@@ -11,8 +11,6 @@
 #		and the other one with the f0 maxima and minima.
 # 3. Changed to the new Praat syntax to improve code-readability.
 
-# Unlike the other script, this script will loop through multiple subfolders to extract F0 values.
-
 # Folder version:
 # The script now can loop through subfolders in the directory you choose.
 # The script sets F0 analysis ranges for different genders. 
@@ -162,12 +160,17 @@ for i_folder from 1 to size(folderNames$#)
 				else
 					i_syll_label = Get interval at time: syllable_tier_number, label_mid
 
-					# Get the duration of the syllable interval
-					syll_start = Get start time of interval: syllable_tier_number, i_syll_label
-					syll_end = Get end time of interval: syllable_tier_number, i_syll_label
-					syll_dur = syll_end - syll_start
-					# Paste the result
-					appendFile: output_file_dyn$, "'syll_dur:3'" + sep$
+					if i_syll_label == ""
+						appendFile: output_file_dyn$, "NA" + sep$
+					else
+						# Get the duration of the syllable interval
+						syll_start = Get start time of interval: syllable_tier_number, i_syll_label
+						syll_end = Get end time of interval: syllable_tier_number, i_syll_label
+						syll_dur = syll_end - syll_start
+						# Paste the result
+						appendFile: output_file_dyn$, "'syll_dur:3'" + sep$
+					endif
+					
 				endif
 
 				if word_tier_number = 0
