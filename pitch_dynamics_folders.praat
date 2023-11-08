@@ -2,7 +2,7 @@
 # For details of the previous versions, please refer to Christian's original script.
 # Feel free to use but please cite when you use it.
 
-# Last updated by Miao Zhang, 10/8/2022.
+# Last updated by Miao Zhang, 11/09/2023.
 
 # Major modifications include:
 # 1. Changed the log file format from wide format to long format.
@@ -12,11 +12,14 @@
 # 3. Changed to the new Praat syntax to improve code-readability.
 
 # Folder version:
-# The script now can loop through subfolders in the directory you choose.
+# The script loops through all subfolders in the directory you choose.
 # The script sets F0 analysis ranges for different genders. 
+# Each of your subfolders should contain recordings from only one speaker.
 
 # !!!IMPORTANT!!!
-# Please name your folders starting with either "f/F" or "m/M" for the script to identify the gender of the speakers.
+# Please format your folder names as: (f/F/m/M)(id_number)_***.
+# For example: f1_SC, m1_TC, F2_KW, or M2_AP.
+# This is for the script to identify the gender of the speaker.
 
 
 #######################################################################
@@ -24,28 +27,30 @@
 
 
 form Extract Pitch data from labelled intervals
-	comment Suffix of the output file:
-	sentence Log_file_t _f0t
-	sentence Log_file_dyn _f0d
+	comment Suffix of the output files:
+	sentence Log_file_f0 _f0
+	sentence Log_file_dur _dur
 	comment Labels you want the script to skip (separate by white space):
 	sentence Skip_list c
-	comment How many F0 values do you want to extract from each segment
+	comment How many F0 values do you want to extract from each labeled interval
 	positive Number_of_chunks 10
-	comment Which tier are the target segments on?:
+	comment On which tier are the target intervals labeled?:
 	positive Labeled_tier_number 2
-	comment Set the next two tier numbers to 0 if you don't have syllable/word tier:
+	comment Set the next two tier numbers to 0 if you don't have syllable/word tiers:
 	integer Syllable_tier_number 1
 	integer Word_tier_number 0
 	comment Pitch analysis settings:
 	positive Analysis_points_time_step 0.005
 	positive Record_with_precision 1
-	positive F0_minimum_for_female 90
-	positive F0_maximum_for_female 700
-	positive F0_minimum_for_male 80
-	positive F0_maximum_for_male 400
 	positive Octave_jump 0.10
 	positive Voicing_threshold 0.65
 	positive Pitch_window_threshold 0.05
+	comment Set the F0 analysis range for different genders:
+	positive F0_minimum_for_female 100
+	positive F0_maximum_for_female 600
+	positive F0_minimum_for_male 70
+	positive F0_maximum_for_male 400
+
 endform
 
 
@@ -63,7 +68,7 @@ stopwatch
 # Time log
 sep$ = ","
 
-output_file_t$ = directory_name$ + log_file_t$ + ".csv"
+output_file_t$ = directory_name$ + log_file_f0$ + ".csv"
 deleteFile: output_file_t$
 header_t$ = "Folder_name" + sep$
 	...+ "File_name" + sep$
@@ -76,7 +81,7 @@ header_t$ = "Folder_name" + sep$
 writeFileLine: output_file_t$, header_t$
 
 # Dynamic log
-output_file_dyn$ = directory_name$ + log_file_dyn$ + ".csv"
+output_file_dyn$ = directory_name$ + log_file_dur$ + ".csv"
 deleteFile: output_file_dyn$
 header_dyn$ = "Folder_name" + sep$
   ...+ "File_name" + sep$
@@ -84,11 +89,7 @@ header_dyn$ = "Folder_name" + sep$
   ...+ "Seg" + sep$
   ...+ "Dur" + sep$
   ...+ "Syll_dur" + sep$
-  ...+ "Word_dur" + sep$
-  ...+ "F0_min" + sep$
-  ...+ "F0_min_loc" + sep$
-  ...+ "F0_max" + sep$
-  ...+ "F0_max_loc" 
+  ...+ "Word_dur"
 writeFileLine: output_file_dyn$, header_dyn$
 
 # Skip labels
@@ -99,10 +100,12 @@ folderNames$# = folderNames$# (directory_name$)
 for i_folder from 1 to size(folderNames$#)
 	folder_name$ = folderNames$# [i_folder]
 	# Seg F0 minimum and maximum for different genders
-	if index_regex (folder_name$, "^f") == 1 or index_regex (folder_name$, "^F") == 1
+	findex = index_regex (folder_name$, "f|F\d+")
+	mindex = index_regex (folder_name$, "m|M\d+")
+	if findex <> 0
 		f0_minimum = f0_minimum_for_female
 		f0_maximum = f0_maximum_for_female
-	elsif index_regex (folder_name$, "^m") == 1 or index_regex (folder_name$, "^M") == 1
+	elsif mindex <> 0
 		f0_minimum = f0_minimum_for_male
 		f0_maximum = f0_maximum_for_male
 	endif
@@ -114,8 +117,9 @@ for i_folder from 1 to size(folderNames$#)
 	# Open the soundfile in Praat
 	for i_file from 1 to num_file
 		wav_name$ = wavNames$# [i_file]
-		writeInfoLine: "Processing folder: < 'folder_name$' >"
-		appendInfoLine: "	current file: < 'wav_name$' >"
+		writeInfoLine: "Processing folder: < 'folder_name$' >."
+		appendInfoLine: "Current F0 analysis range is <'f0_minimum', 'f0_maximum'>Hz."
+		appendInfoLine: "	Current file: < 'wav_name$' >"
 		# Read sound file
 		sound_file = Read from file: directory_name$ + "/" + folder_name$ + "/" + wav_name$
 		sound_name$ = wav_name$ - ".wav"
@@ -159,8 +163,9 @@ for i_folder from 1 to size(folderNames$#)
 					appendFile: output_file_dyn$, "NA" + sep$
 				else
 					i_syll_label = Get interval at time: syllable_tier_number, label_mid
+					syll_label$ = Get label of interval: syllable_tier_number, i_syll_label
 
-					if i_syll_label == ""
+					if syll_label$ == ""
 						appendFile: output_file_dyn$, "NA" + sep$
 					else
 						# Get the duration of the syllable interval
@@ -175,7 +180,7 @@ for i_folder from 1 to size(folderNames$#)
 
 				if word_tier_number = 0
 					# If there is no word tier, paste the word duration as NA
-					appendFile: output_file_dyn$, "NA" + sep$
+					appendFileLine: output_file_dyn$, "NA"
 				else
 					# Find the interval on the labeled word tier
 					i_word_label = Get interval at time: word_tier_number, label_mid
@@ -184,7 +189,7 @@ for i_folder from 1 to size(folderNames$#)
 					word_end = Get end time of interval: word_tier_number, i_word_label
 					word_dur = word_end - word_start
 					# Paste the result
-					appendFile: output_file_dyn$, "'word_dur:3'" + sep$
+					appendFileLine: output_file_dyn$, "'word_dur:3'"
 				endif
 
 				# Work on individual labeled intervals. Extract pitch and intensity object
@@ -213,30 +218,6 @@ for i_folder from 1 to size(folderNames$#)
 				# Overall pitch dynamic analysis
 				# F0 minimum
 				selectObject: pitch_ID
-				f0_min = Get minimum: label_start, label_end, "Hertz", "parabolic"
-				f0_min_time = Get time of minimum: label_start, label_end, "Hertz", "parabolic"
-				f0_min_loc = (f0_min_time - label_start)/dur
-
-				if f0_min = undefined
-					# If f0 minima wasn't found, paste NA to F0_min and F0_minloc
-					appendFile: output_file_dyn$, "NA" + sep$ + "NA" + sep$
-				else
-					# If yes, paste the value
-					appendFile: output_file_dyn$, "'f0_min:0'" + sep$ + percent$(f0_min_loc,0) + sep$
-				endif
-
-				# F0 maximum
-				f0_max = Get maximum: label_start, label_end, "Hertz", "parabolic"
-				f0_max_time = Get time of maximum: label_start, label_end, "Hertz", "parabolic"
-				f0_max_loc = (f0_max_time - label_start)/dur
-
-				if f0_max = undefined
-					# If f0 maxima wasn't found, paste NA to F0_min and F0_minloc
-					appendFileLine: output_file_dyn$, "NA" + sep$ + "NA"
-				else
-					## If yes, paste the value
-					appendFileLine: output_file_dyn$, "'f0_max:0'" + sep$ + percent$(f0_max_loc,0)
-				endif
 
 				# Pitch and intensity by-time interval analysis
 				if dur >= 0.05
