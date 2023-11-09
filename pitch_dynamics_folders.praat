@@ -17,9 +17,12 @@
 # Each of your subfolders should contain recordings from only one speaker.
 
 # !!!IMPORTANT!!!
-# Please format your folder names as: (f/F/m/M)(id_number)_***.
-# For example: f1_SC, m1_TC, F2_KW, or M2_AP.
-# This is for the script to identify the gender of the speaker.
+# Your folder name should contain the string "(f/F/m/M)(id_number)_*", 
+#		where 	(f/F/m/M) represent the gender of the speaker,
+#				(id_number) is the id of the speaker from that gender,
+#				* represents the id of that speaker.
+# For example: f1_SC, m1_TC, F02_KW, or M02_AP.
+# This is for the script to identify the gender of the speakers.
 
 
 #######################################################################
@@ -48,9 +51,10 @@ form Extract Pitch data from labelled intervals
 	comment Set the F0 analysis range for different genders:
 	positive F0_minimum_for_female 100
 	positive F0_maximum_for_female 600
-	positive F0_minimum_for_male 70
+	positive F0_minimum_for_male 60
 	positive F0_maximum_for_male 400
-
+	comment Do you want to extract intensity values?
+	boolean Perform_int 0
 endform
 
 
@@ -70,7 +74,8 @@ sep$ = ","
 
 output_file_t$ = directory_name$ + log_file_f0$ + ".csv"
 deleteFile: output_file_t$
-header_t$ = "Folder_name" + sep$
+if perform_int <> 0
+	header_t$ = "Folder_name" + sep$
 	...+ "File_name" + sep$
 	...+ "Seg_num" + sep$
   	...+ "Seg" + sep$
@@ -78,19 +83,30 @@ header_t$ = "Folder_name" + sep$
   	...+ "t_m" + sep$
   	...+ "F0" + sep$
   	...+ "Int" 
+else
+	header_t$ = "Folder_name" + sep$
+	...+ "File_name" + sep$
+	...+ "Seg_num" + sep$
+  	...+ "Seg" + sep$
+  	...+ "t" + sep$
+  	...+ "t_m" + sep$
+  	...+ "F0"
+endif
 writeFileLine: output_file_t$, header_t$
 
 # Dynamic log
-output_file_dyn$ = directory_name$ + log_file_dur$ + ".csv"
-deleteFile: output_file_dyn$
+output_file_dur$ = directory_name$ + log_file_dur$ + ".csv"
+deleteFile: output_file_dur$
 header_dyn$ = "Folder_name" + sep$
   ...+ "File_name" + sep$
   ...+ "Seg_num" + sep$
   ...+ "Seg" + sep$
   ...+ "Dur" + sep$
+  ...+ "Syll_lab" + sep$
   ...+ "Syll_dur" + sep$
+  ...+ "Word_lab" +sep$
   ...+ "Word_dur"
-writeFileLine: output_file_dyn$, header_dyn$
+writeFileLine: output_file_dur$, header_dyn$
 
 # Skip labels
 skip_labels$# = splitByWhitespace$# (skip_list$)
@@ -100,8 +116,8 @@ folderNames$# = folderNames$# (directory_name$)
 for i_folder from 1 to size(folderNames$#)
 	folder_name$ = folderNames$# [i_folder]
 	# Seg F0 minimum and maximum for different genders
-	findex = index_regex (folder_name$, "f|F\d+")
-	mindex = index_regex (folder_name$, "m|M\d+")
+	findex = index_regex (folder_name$, "[f|F]{1}\d+")
+	mindex = index_regex (folder_name$, "[m|M]{1}\d+")
 	if findex <> 0
 		f0_minimum = f0_minimum_for_female
 		f0_maximum = f0_maximum_for_female
@@ -139,10 +155,10 @@ for i_folder from 1 to size(folderNames$#)
 			label$ = Get label of interval: labeled_tier_number, i_label
 			label$ = replace_regex$ (label$, "[\s]+", "", 0)
 
-			if label$ <> "" and index (skip_labels$#, label$) = 0
+			if label$ <> "" and index (skip_labels$#, label$) == 0
 				# When the label name is not empty, excecute the functions below
 				# paste the file name and the interval label
-				appendFile: output_file_dyn$, folder_name$ + sep$ + sound_name$ + sep$
+				appendFile: output_file_dur$, folder_name$ + sep$ + sound_name$ + sep$
 
 				# Get the starting and end time point of the label,
 				# and calculate the total duration
@@ -153,43 +169,48 @@ for i_folder from 1 to size(folderNames$#)
 				# Find the middle point of the labeled interval
 				label_mid = label_start + dur/2
 
-			
 				# Paste the result
-				appendFile: output_file_dyn$, "'i_label'" + sep$ + label$ + sep$ + "'dur:3'" + sep$
+				appendFile: output_file_dur$, "'i_label'" + sep$ + label$ + sep$ + "'dur:3'" + sep$
 
 				# Find the interval on the labeled sylable tier
-				if syllable_tier_number = 0
+				if syllable_tier_number == 0
 					# If there is no syllable tier, paste the syllable duration as NA
-					appendFile: output_file_dyn$, "NA" + sep$
+					appendFile: output_file_dur$, "NA" + sep$ + "NA" + sep$
 				else
 					i_syll_label = Get interval at time: syllable_tier_number, label_mid
 					syll_label$ = Get label of interval: syllable_tier_number, i_syll_label
 
 					if syll_label$ == ""
-						appendFile: output_file_dyn$, "NA" + sep$
+						appendFile: output_file_dur$, "NA" + sep$ + "NA" + sep$
 					else
 						# Get the duration of the syllable interval
 						syll_start = Get start time of interval: syllable_tier_number, i_syll_label
 						syll_end = Get end time of interval: syllable_tier_number, i_syll_label
 						syll_dur = syll_end - syll_start
 						# Paste the result
-						appendFile: output_file_dyn$, "'syll_dur:3'" + sep$
+						appendFile: output_file_dur$, syll_label$ + sep$ + "'syll_dur:3'" + sep$
 					endif
 					
 				endif
 
-				if word_tier_number = 0
+				if word_tier_number == 0
 					# If there is no word tier, paste the word duration as NA
-					appendFileLine: output_file_dyn$, "NA"
+					appendFileLine: output_file_dur$, "NA" + sep$ + "NA"
 				else
 					# Find the interval on the labeled word tier
 					i_word_label = Get interval at time: word_tier_number, label_mid
-					# Get the duration of the word interval
-					word_start = Get start time of interval: word_tier_number, i_word_label
-					word_end = Get end time of interval: word_tier_number, i_word_label
-					word_dur = word_end - word_start
-					# Paste the result
-					appendFileLine: output_file_dyn$, "'word_dur:3'"
+					word_label$ = Get label of interval: word_tier_number, i_word_label
+
+					if word_label$ == ""
+						appendFileLine: output_file_dur$, "NA" + sep$ + "NA"
+					else
+						# Get the duration of the word interval
+						word_start = Get start time of interval: word_tier_number, i_word_label
+						word_end = Get end time of interval: word_tier_number, i_word_label
+						word_dur = word_end - word_start
+						# Paste the result
+						appendFileLine: output_file_dur$, word_label$ + sep$ + "'word_dur:3'"
+					endif
 				endif
 
 				# Work on individual labeled intervals. Extract pitch and intensity object
@@ -208,13 +229,14 @@ for i_folder from 1 to size(folderNames$#)
 				selectObject: intv_ID
 				pitch_ID = To Pitch (ac): 0, f0_minimum, 15, "yes", 0.03, voicing_threshold, octave_jump, 0.35, 0.14, f0_maximum
 
-
-				# Extract the intensity object
-				selectObject: intv_ID
-				intv_ID_filt = Filter (pass Hann band): 40, 4000, 100
-				selectObject: intv_ID
-				intensity_ID = To Intensity: f0_minimum, 0, "yes"
-
+				if perform_int <> 0
+					# Extract the intensity object
+					selectObject: intv_ID
+					intv_ID_filt = Filter (pass Hann band): 40, 4000, 100
+					selectObject: intv_ID
+					intensity_ID = To Intensity: f0_minimum, 0, "yes"
+				endif
+				
 				# Overall pitch dynamic analysis
 				# F0 minimum
 				selectObject: pitch_ID
@@ -235,24 +257,37 @@ for i_folder from 1 to size(folderNames$#)
 							f0_intv = 0
 						endif
 
-						# Get the mean intensity of the time interval
-						selectObject: intensity_ID
-						intense_intv = Get mean: intv_start, intv_end, "dB"
-						if intense_intv = undefined
-							intense_intv = 0
-						endif
-
-						appendFileLine: output_file_t$, folder_name$ + sep$
+						appendFile: output_file_t$, folder_name$ + sep$
 									...+ sound_name$ + sep$
 									...+ "'i_label'" + sep$
 									...+ label$ + sep$
 									...+ "'i_intv'" + sep$
 									...+ "'intv_mid:3'" + sep$
-									...+ "'f0_intv:0'" + sep$
-									...+ "'intense_intv:0'"
+									...+ "'f0_intv:0'"
+
+						if perform_int <> 0
+							# Get the mean intensity of the time interval
+							selectObject: intensity_ID
+							intense_intv = Get mean: intv_start, intv_end, "dB"
+							if intense_intv = undefined
+								intense_intv = 0
+							endif
+
+							appendFileLine: output_file_t$, sep$ 
+										...+ "'intense_intv:0'"
+						endif
+
+						appendFile: output_file_t$, newline$
+
 					endfor
 				endif
-				removeObject: intv_ID, pitch_ID, intensity_ID, intv_ID_filt
+
+				removeObject: intv_ID, pitch_ID
+
+				if perform_int <> 0
+					removeObject: intensity_ID, intv_ID_filt
+				endif
+
 			endif
 		endfor
 		removeObject: sound_file, textgrid_file
@@ -263,9 +298,9 @@ runtime = stopwatch
 runtime = round(runtime)
 if runtime < 60
 	if runtime < 10
-		appendInfoLine: "Total run time was 00:00:0'runtime'"
+		writeInfoLine: "Total run time was 00:00:0'runtime'"
 	else 
-		appendInfoLine: "Total run time was 00:00:'runtime'"
+		writeInfoLine: "Total run time was 00:00:'runtime'"
 	endif
 elsif runtime < 3600
 	minute = runtime div 60
