@@ -45,16 +45,16 @@ form Extract Pitch data from labelled intervals
 	comment Pitch analysis settings:
 	positive Analysis_points_time_step 0.005
 	positive Record_with_precision 1
-	positive Octave_jump 0.10
-	positive Voicing_threshold 0.65
+	positive Octave_jump 0.30
+	positive Voicing_threshold 0.45
 	positive Pitch_window_threshold 0.05
 	comment Set the F0 analysis range for different genders:
-	positive F0_minimum_for_female 100
+	positive F0_minimum_for_female 75
 	positive F0_maximum_for_female 600
 	positive F0_minimum_for_male 60
 	positive F0_maximum_for_male 400
 	comment Do you want to extract intensity values?
-	boolean Perform_int 0
+	boolean Perform_int 1
 endform
 
 
@@ -232,8 +232,9 @@ for i_folder from 1 to size(folderNames$#)
 				if perform_int <> 0
 					# Extract the intensity object
 					selectObject: intv_ID
-					intv_ID_filt = Filter (pass Hann band): 40, 4000, 100
-					selectObject: intv_ID
+					# Comment the next two lines out if you do not want to filter the sound before obtaining intensity values
+					#intv_ID_filt = Filter (pass Hann band): 40, 4000, 100
+					#selectObject: intv_ID_filt
 					intensity_ID = To Intensity: f0_minimum, 0, "yes"
 				endif
 				
@@ -269,12 +270,12 @@ for i_folder from 1 to size(folderNames$#)
 							# Get the mean intensity of the time interval
 							selectObject: intensity_ID
 							intense_intv = Get mean: intv_start, intv_end, "dB"
+
 							if intense_intv = undefined
 								intense_intv = 0
 							endif
 
-							appendFileLine: output_file_t$, sep$ 
-										...+ "'intense_intv:0'"
+							appendFileLine: output_file_t$, sep$ + "'intense_intv:0'"
 						endif
 
 						appendFile: output_file_t$, newline$
